@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#131b28">
+<title>局域网文件传输</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233ccfbd'/%3E%3Cpath d='M16 7v13m0 0l-5-5m5 5l5-5M9 24h14' stroke='%23131b28' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #131b28;
+    --glow-1: rgba(32, 52, 76, 0.85);
+    --glow-2: rgba(27, 51, 64, 0.8);
+    --card: #1d2a3c;
+    --surface: #1f2d40;
+    --text: #e8eef8;
+    --muted: #8b9bb4;
+    --accent: #3ccfbd;
+    --accent-soft: rgba(60, 207, 189, 0.1);
+    --accent-line: rgba(60, 207, 189, 0.42);
+    --danger: #f16a6a;
+    --danger-text: #ffb9b9;
+    --danger-soft: rgba(241, 106, 106, 0.12);
+    --danger-line: rgba(241, 106, 106, 0.28);
+    --line: rgba(255, 255, 255, .08);
+    --line-strong: rgba(255, 255, 255, .14);
+    --line-soft: rgba(255, 255, 255, .05);
+    --fill: rgba(255, 255, 255, .05);
+    --fill-hover: rgba(255, 255, 255, .09);
+    --fill-soft: rgba(255, 255, 255, .03);
+    --field: rgba(0, 0, 0, .12);
+    --track: rgba(255, 255, 255, .1);
+    --primary-a: #40d6c3;
+    --primary-b: #28b3a3;
+    --primary-ink: #04241f;
+    --shadow: rgba(0, 0, 0, .18);
+    --shadow-lg: rgba(0, 0, 0, .35);
+    --overlay: rgba(19, 27, 40, .82);
+    --toast-bg: #263750;
+    --toast-text: #e8eef8;
+    --toast-line: rgba(255, 255, 255, .16);
+    --toast-error-bg: #45262c;
+    --toast-error-text: #ffd7d7;
+    --toast-error-line: rgba(241, 106, 106, .4);
+    --faint: rgba(255, 255, 255, .3);
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #eef2f8;
+    --glow-1: rgba(198, 219, 242, 0.9);
+    --glow-2: rgba(200, 235, 227, 0.85);
+    --card: #ffffff;
+    --surface: #ffffff;
+    --text: #16263a;
+    --muted: #5f7189;
+    --accent: #12897c;
+    --accent-soft: rgba(18, 137, 124, 0.1);
+    --accent-line: rgba(18, 137, 124, 0.4);
+    --danger: #d64545;
+    --danger-text: #a92f2f;
+    --danger-soft: rgba(214, 69, 69, 0.1);
+    --danger-line: rgba(214, 69, 69, 0.28);
+    --line: rgba(20, 40, 70, .1);
+    --line-strong: rgba(20, 40, 70, .18);
+    --line-soft: rgba(20, 40, 70, .06);
+    --fill: rgba(20, 40, 70, .045);
+    --fill-hover: rgba(20, 40, 70, .09);
+    --fill-soft: rgba(20, 40, 70, .03);
+    --field: rgba(20, 40, 70, .05);
+    --track: rgba(20, 40, 70, .1);
+    --primary-a: #109686;
+    --primary-b: #0b766a;
+    --primary-ink: #ffffff;
+    --shadow: rgba(23, 43, 77, .1);
+    --shadow-lg: rgba(23, 43, 77, .28);
+    --overlay: rgba(238, 242, 248, .88);
+    --toast-bg: #ffffff;
+    --toast-text: #16263a;
+    --toast-line: rgba(20, 40, 70, .14);
+    --toast-error-bg: #fdf0f0;
+    --toast-error-text: #a92f2f;
+    --toast-error-line: rgba(214, 69, 69, .35);
+    --faint: rgba(20, 40, 70, .35);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(1000px 600px at 12% -10%, var(--glow-1) 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 0%, var(--glow-2) 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color .25s ease, color .25s ease;
+  }
+  button, input { font: inherit; color: inherit; }
+  .app { max-width: 1080px; margin: 0 auto; padding: 22px 18px 40px; }
+
+  header.top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .logo {
+    width: 42px; height: 42px; border-radius: 12px; flex: none;
+    display: grid; place-items: center;
+    background: linear-gradient(160deg, var(--primary-a), var(--primary-b));
+    color: var(--primary-ink); box-shadow: 0 6px 18px var(--accent-soft);
+  }
+  .logo svg { width: 22px; height: 22px; }
+  header.top h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  header.top p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .top-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 34px; padding: 0 14px; border-radius: 9px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--fill);
+    font-size: 13px; font-weight: 500; text-decoration: none; white-space: nowrap;
+    transition: background .15s ease, border-color .15s ease, transform .05s ease;
+    user-select: none;
+  }
+  .btn:hover { background: var(--fill-hover); border-color: var(--line-strong); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary {
+    background: linear-gradient(180deg, var(--primary-a), var(--primary-b));
+    border-color: transparent; color: var(--primary-ink); font-weight: 600;
+    box-shadow: 0 4px 14px var(--accent-soft);
+  }
+  .btn.primary:hover { filter: brightness(1.05); }
+  .btn.icon { width: 34px; padding: 0; }
+  .btn svg { width: 16px; height: 16px; }
+
+  /* 主题切换按钮：深色时显示太阳，浅色时显示月亮 */
+  .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+  .crumbs {
+    display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; overflow-x: auto;
+    padding: 10px 14px; margin-bottom: 12px;
+    background: var(--fill-soft);
+    border: 1px solid var(--line); border-radius: 12px;
+    scrollbar-width: none;
+  }
+  .crumbs::-webkit-scrollbar { display: none; }
+  .crumb {
+    border: 0; background: none; padding: 2px 6px; border-radius: 6px;
+    color: var(--muted); cursor: pointer; font-size: 13px; white-space: nowrap;
+  }
+  .crumb:hover { color: var(--text); background: var(--fill); }
+  .crumb.current { color: var(--text); font-weight: 600; }
+  .sep { color: var(--faint); font-size: 12px; }
+
+  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar .summary { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    box-shadow: 0 18px 40px var(--shadow);
+    transition: background-color .25s ease, border-color .25s ease;
+  }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  thead th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted);
+    padding: 10px 14px; border-bottom: 1px solid var(--line);
+    background: var(--field);
+  }
+  tbody tr { border-bottom: 1px solid var(--line-soft); }
+  tbody tr:last-child { border-bottom: 0; }
+  tbody tr:hover { background: var(--fill-soft); }
+  td { padding: 10px 14px; font-size: 13px; vertical-align: middle; }
+  .cell-name { min-width: 0; }
+  .name-wrap { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .name-block { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .ficon { flex: none; font-size: 16px; line-height: 1; filter: saturate(.9); }
+  .name {
+    display: block;
+    max-width: 100%;
+    color: var(--text); text-decoration: none; border: 0; background: none; padding: 0;
+    text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .meta {
+    display: none;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .name:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .cell-size, .cell-time { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .cell-size { width: 110px; }
+  .cell-time { width: 170px; }
+  .cell-actions { width: 124px; text-align: right; white-space: nowrap; }
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 28px; height: 28px;
+    border-radius: 7px; border: 1px solid transparent; background: none;
+    color: var(--muted); cursor: pointer; text-decoration: none; margin-left: 2px;
+  }
+  .icon-btn:hover { color: var(--text); background: var(--fill); border-color: var(--line); }
+  .icon-btn.danger:hover { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-line); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  .empty { padding: 54px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+  .empty .big { font-size: 30px; margin-bottom: 8px; opacity: .8; }
+
+  .uploads {
+    position: fixed; right: 16px; bottom: 16px; width: min(340px, calc(100vw - 32px));
+    display: flex; flex-direction: column; gap: 8px; z-index: 40; pointer-events: none;
+  }
+  .upload-item {
+    pointer-events: auto; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; box-shadow: 0 12px 30px var(--shadow-lg);
+    animation: pop .18s ease-out;
+  }
+  .upload-item.done { border-color: var(--accent-line); }
+  .upload-item.fail { border-color: var(--danger-line); }
+  .upload-top { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .upload-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .upload-pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { height: 3px; border-radius: 99px; background: var(--track); margin-top: 8px; overflow: hidden; }
+  .fill { height: 100%; width: 0; border-radius: 99px; background: var(--accent); transition: width .15s ease; }
+  .upload-item.fail .fill { background: var(--danger); }
+
+  .toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: 20px; z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+  .toast {
+    background: var(--toast-bg); border: 1px solid var(--toast-line); color: var(--toast-text);
+    padding: 8px 16px; border-radius: 99px; font-size: 12px;
+    box-shadow: 0 10px 24px var(--shadow-lg); animation: pop .18s ease-out;
+  }
+  .toast.error { background: var(--toast-error-bg); border-color: var(--toast-error-line); color: var(--toast-error-text); }
+
+  .drop-overlay {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    background: var(--overlay); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center;
+  }
+  body.dragging .drop-overlay { display: flex; }
+  .drop-card {
+    padding: 40px 56px; border-radius: 18px; text-align: center;
+    border: 2px dashed var(--accent-line); background: var(--accent-soft);
+  }
+  .drop-card strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .drop-card span { color: var(--muted); font-size: 12px; }
+
+  @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 720px) {
+    .app { padding: 14px 12px 30px; }
+    header.top h1 { font-size: 16px; }
+    .cell-size, .cell-time { display: none; }
+    .meta { display: block; }
+    td, thead th { padding: 9px 8px; }
+    .toolbar .summary { width: 100%; margin-left: 0; }
+    .cell-actions { width: 96px; }
+    .icon-btn { width: 26px; height: 26px; margin-left: 0; }
+    .icon-btn + .icon-btn { margin-left: 2px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M5 19h14"/>
+      </svg>
+    </div>
+    <div>
+      <h1>局域网文件传输</h1>
+      <p id="subtitle">正在连接…</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn icon theme-toggle" id="btnTheme" title="切换深浅色" aria-label="切换深浅色">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
+      <button class="btn icon" id="btnRefresh" title="刷新列表" aria-label="刷新列表">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="crumbs" id="crumbs" aria-label="目录路径"></nav>
+
+  <section class="toolbar">
+    <label class="btn primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 16V5m0 0L8 9m4-4l4 4"/><path d="M4 19h16"/>
+      </svg>
+      上传文件
+      <input type="file" id="fileInput" multiple hidden>
+    </label>
+    <label class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7a2 2 0 0 1 2-2h3.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </svg>
+      上传文件夹
+      <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
+    </label>
+    <button class="btn" id="btnMkdir">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7a2 2 0 0 1 2-2h3.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5m-2.5-2.5h5"/>
+      </svg>
+      新建文件夹
+    </button>
+    <span class="summary" id="summary"></span>
+  </section>
+
+  <section class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th class="cell-size">大小</th>
+          <th class="cell-time">修改时间</th>
+          <th class="cell-actions">操作</th>
+        </tr>
+      </thead>
+      <tbody id="fileRows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>
+      <div class="big">📂</div>
+      这里还没有文件，拖拽文件到页面或点击「上传文件」
+    </div>
+  </section>
+</div>
+
+<div class="uploads" id="uploads" aria-live="polite"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="drop-overlay">
+  <div class="drop-card">
+    <strong>松开鼠标开始上传</strong>
+    <span>文件将保存到当前目录</span>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var ICONS = {
+    download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M5 19h14"/></svg>',
+    preview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1z"/><path d="M6.5 7l.8 12a1 1 0 0 0 1 .9h7.4a1 1 0 0 0 1-.9l.8-12"/><path d="M10 11v5m4-5v5"/></svg>'
+  };
+  var PREVIEW_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'mp4', 'webm', 'mov', 'mp3', 'wav', 'ogg', 'm4a', 'pdf'];
+  var state = { dir: '', entries: [] };
+  var THEME_KEY = 'localsever-client-theme';
+
+  function $(id) { return document.getElementById(id); }
+
+  function detectTheme() {
+    try {
+      var saved = localStorage.getItem(THEME_KEY);
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch (e) { /* 隐私模式下可能无法访问 localStorage */ }
+    try {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+    } catch (e) { /* ignore */ }
+    return 'dark';
+  }
+
+  var theme = detectTheme();
+
+  function applyTheme(value) {
+    document.documentElement.dataset.theme = value;
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', value === 'light' ? '#eef2f8' : '#131b28');
+  }
+
+  applyTheme(theme);
+  function joinPath(dir, name) { return dir ? dir + '/' + name : name; }
+  function parentPath(p) {
+    var i = p.lastIndexOf('/');
+    return i < 0 ? '' : p.slice(0, i);
+  }
+  function baseName(p) {
+    var i = p.lastIndexOf('/');
+    return i < 0 ? p : p.slice(i + 1);
+  }
+  function isPreviewable(name) {
+    var dot = name.lastIndexOf('.');
+    return dot >= 0 && PREVIEW_EXT.indexOf(name.slice(dot + 1).toLowerCase()) >= 0;
+  }
+  function downloadURL(p, inline) {
+    return '/api/download?path=' + encodeURIComponent(p) + (inline ? '&inline=1' : '');
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return '0 B';
+    var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = 0;
+    var n = bytes;
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    return (i === 0 ? n : n.toFixed(n >= 100 ? 0 : 1)) + ' ' + units[i];
+  }
+  function formatTime(ms) {
+    if (!ms) return '';
+    var d = new Date(ms);
+    var now = new Date();
+    var pad = function (v) { return v < 10 ? '0' + v : '' + v; };
+    var hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (d.toDateString() === now.toDateString()) return '今天 ' + hm;
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + hm;
+  }
+
+  function toast(message, kind) {
+    var el = document.createElement('div');
+    el.className = 'toast' + (kind === 'error' ? ' error' : '');
+    el.textContent = message;
+    $('toasts').appendChild(el);
+    setTimeout(function () { el.remove(); }, kind === 'error' ? 4200 : 2400);
+  }
+
+  async function api(url, options) {
+    var res = await fetch(url, options || {});
+    var text = await res.text();
+    var data = null;
+    if (text) {
+      try { data = JSON.parse(text); } catch (e) { data = null; }
+    }
+    if (!res.ok) {
+      throw new Error((data && data.error) || '请求失败（' + res.status + '）');
+    }
+    return data;
+  }
+
+  async function load(dir) {
+    if (typeof dir !== 'string') dir = state.dir;
+    try {
+      var data = await api('/api/list?dir=' + encodeURIComponent(dir));
+      state.dir = data.dir === '.' ? '' : data.dir;
+      state.entries = data.entries || [];
+      render();
+      $('subtitle').textContent = '已连接 · ' + (state.dir || '共享根目录');
+    } catch (err) {
+      if (dir !== '') {
+        toast(err.message, 'error');
+        return load('');
+      }
+      $('subtitle').textContent = '连接断开';
+      toast(err.message, 'error');
+    }
+  }
+
+  function render() {
+    renderCrumbs();
+
+    var tbody = $('fileRows');
+    tbody.textContent = '';
+    for (var i = 0; i < state.entries.length; i++) {
+      tbody.appendChild(renderRow(state.entries[i]));
+    }
+
+    $('empty').hidden = state.entries.length > 0;
+
+    var files = 0;
+    var bytes = 0;
+    for (var j = 0; j < state.entries.length; j++) {
+      if (!state.entries[j].isDir) { files++; bytes += state.entries[j].size; }
+    }
+    $('summary').textContent = state.entries.length
+      ? state.entries.length + ' 项 · ' + files + ' 个文件 · ' + formatSize(bytes)
+      : '空文件夹';
+  }
+
+  function renderCrumbs() {
+    var box = $('crumbs');
+    box.textContent = '';
+
+    var root = document.createElement('button');
+    root.className = 'crumb';
+    root.textContent = '全部文件';
+    root.addEventListener('click', function () { load(''); });
+    box.appendChild(root);
+
+    var parts = state.dir ? state.dir.split('/') : [];
+    var acc = '';
+    for (var i = 0; i < parts.length; i++) {
+      var sep = document.createElement('span');
+      sep.className = 'sep';
+      sep.textContent = '/';
+      box.appendChild(sep);
+
+      acc = acc ? acc + '/' + parts[i] : parts[i];
+      if (i === parts.length - 1) {
+        var current = document.createElement('span');
+        current.className = 'crumb current';
+        current.textContent = parts[i];
+        box.appendChild(current);
+      } else {
+        var btn = document.createElement('button');
+        btn.className = 'crumb';
+        btn.textContent = parts[i];
+        (function (target) {
+          btn.addEventListener('click', function () { load(target); });
+        })(acc);
+        box.appendChild(btn);
+      }
+    }
+    box.scrollLeft = box.scrollWidth;
+  }
+
+  function renderRow(entry) {
+    var tr = document.createElement('tr');
+    var fullPath = joinPath(state.dir, entry.name);
+
+    var tdName = document.createElement('td');
+    tdName.className = 'cell-name';
+    var nameWrap = document.createElement('div');
+    nameWrap.className = 'name-wrap';
+    var icon = document.createElement('span');
+    icon.className = 'ficon';
+    icon.textContent = entry.isDir ? '📁' : '📄';
+    nameWrap.appendChild(icon);
+
+    var nameBlock = document.createElement('div');
+    nameBlock.className = 'name-block';
+
+    if (entry.isDir) {
+      var folderBtn = document.createElement('button');
+      folderBtn.className = 'name';
+      folderBtn.textContent = entry.name;
+      folderBtn.addEventListener('click', function () { load(fullPath); });
+      nameBlock.appendChild(folderBtn);
+    } else {
+      var fileLink = document.createElement('a');
+      fileLink.className = 'name';
+      fileLink.textContent = entry.name;
+      if (isPreviewable(entry.name)) {
+        fileLink.href = downloadURL(fullPath, true);
+        fileLink.target = '_blank';
+        fileLink.rel = 'noopener';
+      } else {
+        fileLink.href = downloadURL(fullPath, false);
+        fileLink.download = entry.name;
+      }
+      nameBlock.appendChild(fileLink);
+    }
+
+    var meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = entry.isDir
+      ? '文件夹'
+      : formatSize(entry.size) + ' · ' + formatTime(entry.modTime);
+    nameBlock.appendChild(meta);
+    nameWrap.appendChild(nameBlock);
+    tdName.appendChild(nameWrap);
+
+    var tdSize = document.createElement('td');
+    tdSize.className = 'cell-size';
+    tdSize.textContent = entry.isDir ? '—' : formatSize(entry.size);
+
+    var tdTime = document.createElement('td');
+    tdTime.className = 'cell-time';
+    tdTime.textContent = formatTime(entry.modTime);
+
+    var tdActions = document.createElement('td');
+    tdActions.className = 'cell-actions';
+
+    if (!entry.isDir) {
+      var dl = document.createElement('a');
+      dl.className = 'icon-btn';
+      dl.href = downloadURL(fullPath, false);
+      dl.download = entry.name;
+      dl.title = '下载';
+      dl.innerHTML = ICONS.download;
+      tdActions.appendChild(dl);
+
+      if (isPreviewable(entry.name)) {
+        var pv = document.createElement('a');
+        pv.className = 'icon-btn';
+        pv.href = downloadURL(fullPath, true);
+        pv.target = '_blank';
+        pv.rel = 'noopener';
+        pv.title = '预览';
+        pv.innerHTML = ICONS.preview;
+        tdActions.appendChild(pv);
+      }
+    }
+
+    var del = document.createElement('button');
+    del.className = 'icon-btn danger';
+    del.title = '删除';
+    del.innerHTML = ICONS.trash;
+    del.addEventListener('click', function () { removeEntry(entry); });
+    tdActions.appendChild(del);
+
+    tr.appendChild(tdName);
+    tr.appendChild(tdSize);
+    tr.appendChild(tdTime);
+    tr.appendChild(tdActions);
+    return tr;
+  }
+
+  async function removeEntry(entry) {
+    var message = entry.isDir
+      ? '确定删除文件夹「' + entry.name + '」及其中的全部内容？此操作不可恢复。'
+      : '确定删除「' + entry.name + '」？';
+    if (!window.confirm(message)) return;
+
+    try {
+      await api('/api/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: joinPath(state.dir, entry.name) })
+      });
+      toast('已删除');
+      load(state.dir);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  function createUploadItem(name) {
+    var wrap = document.createElement('div');
+    wrap.className = 'upload-item';
+
+    var top = document.createElement('div');
+    top.className = 'upload-top';
+    var label = document.createElement('span');
+    label.className = 'upload-name';
+    label.textContent = name;
+    label.title = name;
+    var pct = document.createElement('span');
+    pct.className = 'upload-pct';
+    pct.textContent = '0%';
+    top.appendChild(label);
+    top.appendChild(pct);
+
+    var bar = document.createElement('div');
+    bar.className = 'bar';
+    var fill = document.createElement('div');
+    fill.className = 'fill';
+    bar.appendChild(fill);
+
+    wrap.appendChild(top);
+    wrap.appendChild(bar);
+    $('uploads').appendChild(wrap);
+
+    return {
+      setProgress: function (value) {
+        pct.textContent = value + '%';
+        fill.style.width = value + '%';
+      },
+      done: function () {
+        wrap.className = 'upload-item done';
+        pct.textContent = '完成';
+        setTimeout(function () { wrap.remove(); }, 3000);
+      },
+      fail: function (message) {
+        wrap.className = 'upload-item fail';
+        pct.textContent = '失败';
+        pct.title = message;
+        label.textContent = '✕ ' + name;
+        setTimeout(function () { wrap.remove(); }, 8000);
+      }
+    };
+  }
+
+  function uploadOne(file, targetDir, ui) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload?dir=' + encodeURIComponent(targetDir) + '&name=' + encodeURIComponent(file.name));
+      xhr.upload.addEventListener('progress', function (e) {
+        if (e.lengthComputable && e.total > 0) {
+          ui.setProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+        }
+      });
+      xhr.addEventListener('load', function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          ui.setProgress(100);
+          resolve();
+          return;
+        }
+        var message = '上传失败（' + xhr.status + '）';
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data && data.error) message = data.error;
+        } catch (e) { /* ignore */ }
+        reject(new Error(message));
+      });
+      xhr.addEventListener('error', function () { reject(new Error('网络错误')); });
+      xhr.send(file);
+    });
+  }
+
+  async function ensureDirs(dirs) {
+    var list = Array.from(dirs).sort();
+    for (var i = 0; i < list.length; i++) {
+      var dir = list[i];
+      try {
+        await api('/api/mkdir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dir: parentPath(dir), name: baseName(dir) })
+        });
+      } catch (e) {
+        // 目录已存在时服务端返回成功，这里忽略其他错误，真正的失败会在上传时暴露。
+      }
+    }
+  }
+
+  async function handleFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList);
+    if (!files.length) return;
+
+    var baseDir = state.dir;
+    var dirs = new Set();
+    files.forEach(function (file) {
+      var parts = (file.webkitRelativePath || '').split('/');
+      parts.pop();
+      var dir = baseDir;
+      parts.forEach(function (part) {
+        dir = joinPath(dir, part);
+        dirs.add(dir);
+      });
+    });
+
+    if (dirs.size) {
+      $('subtitle').textContent = '正在创建文件夹…';
+      await ensureDirs(dirs);
+    }
+
+    var succeeded = 0;
+    var failed = 0;
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      var relParts = (file.webkitRelativePath || '').split('/');
+      relParts.pop();
+      var targetDir = baseDir;
+      relParts.forEach(function (part) { targetDir = joinPath(targetDir, part); });
+
+      var displayName = file.webkitRelativePath || file.name;
+      var ui = createUploadItem(displayName);
+      try {
+        await uploadOne(file, targetDir, ui);
+        ui.done();
+        succeeded++;
+      } catch (err) {
+        ui.fail(err.message);
+        failed++;
+      }
+      $('subtitle').textContent = '正在上传 ' + (i + 1) + '/' + files.length;
+    }
+
+    $('subtitle').textContent = '已连接 · ' + (state.dir || '共享根目录');
+    if (failed) {
+      toast(succeeded + ' 个文件上传成功，' + failed + ' 个失败', 'error');
+    } else {
+      toast(succeeded + ' 个文件上传完成');
+    }
+    load(state.dir);
+  }
+
+  function hasFiles(e) {
+    if (!e.dataTransfer) return false;
+    var types = e.dataTransfer.types;
+    if (!types) return false;
+    for (var i = 0; i < types.length; i++) {
+      if (types[i] === 'Files') return true;
+    }
+    return false;
+  }
+
+  var dragDepth = 0;
+  document.addEventListener('dragenter', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    document.body.classList.add('dragging');
+  });
+  document.addEventListener('dragover', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  document.addEventListener('dragleave', function (e) {
+    if (!hasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) document.body.classList.remove('dragging');
+  });
+  document.addEventListener('drop', function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('dragging');
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      handleFiles(e.dataTransfer.files);
+    }
+  });
+
+  $('fileInput').addEventListener('change', function (e) {
+    handleFiles(e.target.files);
+    e.target.value = '';
+  });
+  $('folderInput').addEventListener('change', function (e) {
+    handleFiles(e.target.files);
+    e.target.value = '';
+  });
+  $('btnRefresh').addEventListener('click', function () { load(state.dir); });
+  $('btnTheme').addEventListener('click', function () {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    applyTheme(theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ }
+  });
+  $('btnMkdir').addEventListener('click', async function () {
+    var name = window.prompt('新建文件夹名称');
+    if (!name) return;
+    try {
+      await api('/api/mkdir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: state.dir, name: name })
+      });
+      toast('文件夹已创建');
+      load(state.dir);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  });
+
+  load('');
+})();
+</script>
+</body>
+</html>
